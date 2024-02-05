@@ -1,0 +1,99 @@
+version: "3.7"
+services:
+  app:
+    build:
+      args:
+        user: sammy
+        uid: 1000
+      context: ./docker-conf/buildFile/php
+      dockerfile: Dockerfile
+    image: my_network
+    container_name: ${APP_NAME}_app
+    restart: unless-stopped
+    working_dir: /var/www/
+    volumes:
+      - ${PROJECT_FOLDER}:/var/www
+    networks:
+      - my_network
+    
+  
+  nginx:
+    image: nginx:alpine
+    container_name: ${APP_NAME}_nginx
+    restart: unless-stopped
+    ports:
+      - ${APP_PORT}:80
+    volumes:
+      - ${PROJECT_FOLDER}:/var/www
+      - ./docker-conf/nginx:/etc/nginx/conf.d/
+      - ./docker-vol/nginx/log:/var/log/nginx
+    networks:
+      - my_network
+
+  db:
+    image: mysql:8.0
+    container_name: ${APP_NAME}_db
+    restart: unless-stopped
+    environment:
+      # MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      # MYSQL_PASSWORD: ${DB_PASSWORD}
+      # MYSQL_USER: ${DB_USERNAME}
+      # SERVICE_TAGS: dev
+      # SERVICE_NAME: mysql
+    volumes:
+      - ./docker-vol/mysql:/var/lib/mysql
+    # ports:
+    #   - 3306:3306
+    networks:
+      - my_network
+
+  phpmyadmin:
+    container_name: ${APP_NAME}_phpmyadmin
+    image: phpmyadmin
+    restart: always
+    ports:
+      - ${PHPMYADMIN_PORT}:80
+    environment:
+      - PMA_HOSTS=db
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD}
+      - UPLOAD_LIMIT=300M
+    networks:
+      - my_network
+    depends_on:
+      - db
+  
+  # laravel-echo-server:
+  #   build:
+  #     context: ./docker-conf/buildFile/laravel-echo-server
+  #     # dockerfile: Dockerfile
+  #   image: my-laravel-echo-server
+  #   container_name: ${APP_NAME}_echo_server
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ${PROJECT_FOLDER}:/var/www
+  #   environment:
+  #     - NODE_ENV=production
+  #   networks:
+  #     - my_network
+  #   depends_on:
+  #     - app
+  #     - laravel-redis
+
+
+  # laravel-redis:
+  #   # image: "redis:alpine"
+  #   build: 
+  #     context: ./docker-conf/buildFile/laravel-redis/
+  #   container_name: laravel-redis
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./docker-conf/laravel-redis/config/redis.conf:/etc/redis.conf
+  #   ports:
+  #     - "6379:6379"
+  
+networks:
+  my_network:
+    name: "global_network"
+    # driver: bridge
+    external: true
